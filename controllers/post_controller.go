@@ -4,6 +4,7 @@ import (
 	"cms-backend/models"
 	"cms-backend/utils"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -38,92 +39,197 @@ func GetPosts(c *gin.Context) {
 
 // GetPost retrieves a specific post by ID
 func GetPost(c *gin.Context) {
-    // TODO: Get database connection
-    // Get database instance from Gin context
-    
-    // TODO: Handle ID parameter
-    // 1. Get the ID from URL parameter
-      // Example: /api/posts/123
-    
-    // 2. Convert string ID to uint
+	db := c.MustGet("db").(*gorm.DB)
+	strId := c.Param("id")
 
+	numId, err := strconv.ParseUint(strId, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, utils.HTTPError{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid ID provided : " + err.Error(),
+		})
+		return
+	}
 
-    // TODO: Retrieve post from database
-    // 1. Define post variable and query database
+	var post models.Post
+	if result := db.First(&post, numId); result.Error != nil {
+		c.JSON(http.StatusInternalServerError, utils.HTTPError{
+			Code:    http.StatusInternalServerError,
+			Message: "Post could not be found.",
+		})
+		return
+	}
 
-    // 2. Return the post
+	c.JSON(http.StatusOK, post)
 }
 
 // CreatePost creates a new post
 func CreatePost(c *gin.Context) {
-    // TODO: Get database connection
-    // Get database instance from Gin context
-    
-    // TODO: Parse and validate input
-    // 1. Define post variable to store incoming data
-    
-    // 2. Parse JSON request body into post struct
+	db := c.MustGet("db").(*gorm.DB)
 
-    // TODO: Validate required fields
-    // Validate required fields
+	var post models.Post
 
-    // TODO: Create post in database
-    // 1. Start database transaction
-    
-    // 2. Create the post
+	// Parse JSON request body
+	if err := c.ShouldBindJSON(&post); err != nil {
+		c.JSON(http.StatusBadRequest, utils.HTTPError{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid post data provided : " + err.Error(),
+		})
+		return
+	}
 
-    // 3. Commit transaction
+	// Validate required post fields
+	if err := post.Validate(); err != nil {
+		c.JSON(http.StatusBadRequest, utils.HTTPError{
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+		})
+		return
+	}
 
-    // 4. Return created post
+	tx := db.Begin()
+
+	if err := tx.Create(&post).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, utils.HTTPError{
+			Code:    http.StatusInternalServerError,
+			Message: "Unable to add a post to the database : " + err.Error(),
+		})
+		return
+	}
+
+	tx.Commit()
+
+	c.JSON(http.StatusCreated, post)
 }
 
 // UpdatePost updates an existing post
 func UpdatePost(c *gin.Context) {
-    // TODO: Get database connection
-    // Get database instance from Gin context
-    
-    // TODO: Parse and validate ID
-    // Get ID from URL parameter
-      // Example: /api/posts/123
+	db := c.MustGet("db").(*gorm.DB)
+	strId := c.Param("id")
 
-    // TODO: Check if post exists
-    // Find existing post
+	numId, err := strconv.ParseUint(strId, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, utils.HTTPError{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid ID provided : " + err.Error(),
+		})
+		return
+	}
 
-    // TODO: Parse and validate update data
-    // Define variable for update input
+	var post models.Post
 
-    // TODO: Update post fields
-    // Update only the fields that are allowed to be updated
+	if result := db.First(&post, numId); result.Error != nil {
+		c.JSON(http.StatusNotFound, utils.HTTPError{
+			Code:    http.StatusNotFound,
+			Message: "Post could not be found",
+		})
+		return
+	}
 
-    // TODO: Save updates to database
-    // 1. Start transaction
-    
-    // 2. Save the updated post
+	var inputData models.Post
+	if err := c.ShouldBindJSON(&inputData); err != nil {
+		c.JSON(http.StatusBadRequest, utils.HTTPError{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid input data provided : " + err.Error(),
+		})
+		return
+	}
 
-    // 3. Commit transaction
+	// Update only the fields that are allowed to be updated
+	if result := inputData.Validate(); result.Error != nil {
+		c.JSON(http.StatusBadRequest, utils.HTTPError{
+			Code:    http.StatusBadRequest,
+			Message: result.Error(),
+		})
+		return
+	}
 
-    // 4. Return updated post
+	tx := db.Begin()
+
+	if tx.Error != nil {
+		c.JSON(http.StatusInternalServerError, utils.HTTPError{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to start transaction",
+		})
+		return
+	}
+
+	// Save the updated post
+	if err := db.Model(&post).Updates(inputData).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, utils.HTTPError{
+			Code:    http.StatusInternalServerError,
+			Message: "Database operation failed: " + err.Error(),
+		})
+		return
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, utils.HTTPError{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to commit transaction: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, post)
 }
 
 // DeletePost deletes a post
 func DeletePost(c *gin.Context) {
-    // TODO: Get database connection
-    // Get database instance from Gin context
-    
-    // TODO: Parse and validate ID
-    // Get ID from URL parameter
-	 // Example: /api/posts/123
+	db := c.MustGet("db").(*gorm.DB)
+	strId := c.Param("id")
 
-    // TODO: Check if post exists
-    // Find existing post
+	numId, err := strconv.ParseUint(strId, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, utils.HTTPError{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid ID provided : " + err.Error(),
+		})
+		return
+	}
 
-    // TODO: Delete post from database
-    // 1. Start transaction
-    
-    // 2. Delete the post
-    // Note: Consider if you want soft delete (recommended) or hard delete
+	var post models.Post
 
-    // 3. Commit transaction
+	if result := db.First(&post, numId); result.Error != nil {
+		c.JSON(http.StatusNotFound, utils.HTTPError{
+			Code:    http.StatusNotFound,
+			Message: "Post could not be found",
+		})
+		return
+	}
 
-    // 4. Return success message
+	tx := db.Begin()
+
+	if tx.Error != nil {
+		c.JSON(http.StatusInternalServerError, utils.HTTPError{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to start transaction",
+		})
+		return
+	}
+
+	if err := tx.Delete(&post).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, utils.HTTPError{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to delete post: " + err.Error(),
+		})
+		return
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, utils.HTTPError{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to commit transaction: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, utils.MessageResponse{
+		Message: "Post successfully deleted",
+	})
 }

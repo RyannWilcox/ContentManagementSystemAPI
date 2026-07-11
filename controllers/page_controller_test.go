@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/stretchr/testify/assert"
 )
 
 // TODO: Import required packages for:
@@ -64,28 +65,23 @@ func TestGetPage(t *testing.T) {
 
 	router.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("Expected status 200, but got %d", w.Code)
-	}
+	assert.Equal(t, http.StatusOK, w.Code, "Expected status code 201")
 
 	var response models.Page
-	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
-		t.Fatalf("Error unmarshaling response: %v", err)
-	}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err, "Failed to unmarshal response")
 
-	if response.Title != "First Page" {
-		t.Errorf("Expected title 'First Page', got '%s'", response.Title)
-	}
-
-	if response.Content != "Content 1" {
-		t.Errorf("Expected content 'Content 1', got '%s'", response.Content)
-	}
+	assert.Equal(t, uint(1), response.ID, "Expected page ID to be 1")
+	assert.Equal(t, "First Page", response.Title, "Page title should match")
+	assert.Equal(t, "Content 1", response.Content, "Page content should match")
 }
 
 func TestCreatePage(t *testing.T) {
 	//TODO: Add test for CreatePage
 	// STEP 1: Test Setup
 	// - Initialize test environment
+	//router, _, mock := utils.SetupRouterAndMockDB(t)
+	//defer mock.ExpectClose()
 
 	// STEP 2: Database Expectations
 	// - Expect transaction begin

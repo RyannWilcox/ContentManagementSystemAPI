@@ -48,93 +48,106 @@ func TestGetPages(t *testing.T) {
 }
 
 func TestGetPage(t *testing.T) {
-	//TODO: Add test for GetPage
-    // STEP 1: Test Setup
-    // - Initialize test environment
-    
-    // STEP 2: Mock Data Creation
-    // - Create mock row for a single page
-    // - Include all required fields with test data
-    
-    // STEP 3: Database Expectations
-    // - Expect SELECT with WHERE clause for ID
-    // - Include proper argument matching
-    
-    // STEP 4: HTTP Test Setup
-    // - Register GET route with ID parameter
-    // - Create and execute request
-    
-    // STEP 5: Response Validation
-    // - Check status code
-    // - Verify page details match expected values
+	router, _, mock := utils.SetupRouterAndMockDB(t)
+	defer mock.ExpectClose()
+
+	rows := sqlmock.NewRows([]string{"id", "title", "content", "created_at", "updated_at"}).
+		AddRow(1, "First Page", "Content 1", time.Now(), time.Now())
+
+	mock.ExpectQuery(`SELECT \* FROM "pages" WHERE "pages"\."id" = \$1 ORDER BY "pages"\."id" LIMIT \$2`).
+		WithArgs(1, 1).
+		WillReturnRows(rows)
+
+	router.GET("/pages/:id", GetPage)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/pages/1", nil)
+
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected status 200, but got %d", w.Code)
+	}
+
+	var response models.Page
+	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+		t.Fatalf("Error unmarshaling response: %v", err)
+	}
+
+	if response.Title != "First Page" {
+		t.Errorf("Expected title 'First Page', got '%s'", response.Title)
+	}
+
+	if response.Content != "Content 1" {
+		t.Errorf("Expected content 'Content 1', got '%s'", response.Content)
+	}
 }
 
 func TestCreatePage(t *testing.T) {
 	//TODO: Add test for CreatePage
-    // STEP 1: Test Setup
-    // - Initialize test environment
-    
-    // STEP 2: Database Expectations
-    // - Expect transaction begin
-    // - Expect INSERT with proper columns
-    // - Expect transaction commit
-    
-    // STEP 3: Request Preparation
-    // - Create page object with test data
-    // - Convert to JSON for request body
-    
-    // STEP 4: HTTP Test Setup
-    // - Register POST route
-    // - Create request with JSON body
-    // - Set proper headers
-    
-    // STEP 5: Response Validation
-    // - Verify 201 Created status
-    // - Check created page details
+	// STEP 1: Test Setup
+	// - Initialize test environment
+
+	// STEP 2: Database Expectations
+	// - Expect transaction begin
+	// - Expect INSERT with proper columns
+	// - Expect transaction commit
+
+	// STEP 3: Request Preparation
+	// - Create page object with test data
+	// - Convert to JSON for request body
+
+	// STEP 4: HTTP Test Setup
+	// - Register POST route
+	// - Create request with JSON body
+	// - Set proper headers
+
+	// STEP 5: Response Validation
+	// - Verify 201 Created status
+	// - Check created page details
 }
 
 func TestUpdatePage(t *testing.T) {
 	//TODO: Add test for UpdatePage
-    // STEP 1: Test Setup
-    // - Initialize test environment
-    
-    // STEP 2: Database Expectations
-    // - Expect SELECT to find existing page
-    // - Expect transaction begin
-    // - Expect UPDATE with new values
-    // - Expect transaction commit
-    
-    // STEP 3: Request Preparation
-    // - Create update data
-    // - Prepare JSON request body
-    
-    // STEP 4: HTTP Test Setup
-    // - Register PUT route
-    // - Create request with ID and body
-    
-    // STEP 5: Response Validation
-    // - Verify successful update
-    // - Check updated fields
+	// STEP 1: Test Setup
+	// - Initialize test environment
+
+	// STEP 2: Database Expectations
+	// - Expect SELECT to find existing page
+	// - Expect transaction begin
+	// - Expect UPDATE with new values
+	// - Expect transaction commit
+
+	// STEP 3: Request Preparation
+	// - Create update data
+	// - Prepare JSON request body
+
+	// STEP 4: HTTP Test Setup
+	// - Register PUT route
+	// - Create request with ID and body
+
+	// STEP 5: Response Validation
+	// - Verify successful update
+	// - Check updated fields
 }
 
 func TestDeletePage(t *testing.T) {
 	//TODO: Add test for DeletePage
-    // STEP 1: Test Setup
-    // - Initialize test environment
-    
-    // STEP 2: Database Expectations
-    // - Expect SELECT to verify existence
-    // - Expect transaction begin
-    // - Expect DELETE query
-    // - Expect transaction commit
-    
-    // STEP 3: HTTP Test Setup
-    // - Register DELETE route
-    // - Create request with ID
-    
-    // STEP 4: Response Validation
-    // - Verify successful deletion
-    // - Check deletion message
+	// STEP 1: Test Setup
+	// - Initialize test environment
+
+	// STEP 2: Database Expectations
+	// - Expect SELECT to verify existence
+	// - Expect transaction begin
+	// - Expect DELETE query
+	// - Expect transaction commit
+
+	// STEP 3: HTTP Test Setup
+	// - Register DELETE route
+	// - Create request with ID
+
+	// STEP 4: Response Validation
+	// - Verify successful deletion
+	// - Check deletion message
 }
 
 /*

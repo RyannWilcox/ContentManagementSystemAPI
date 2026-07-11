@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 // This struct includes fields for:
 // - ID (unsigned integer, primary key)
@@ -19,4 +22,18 @@ type Post struct {
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 	Media     []Media   `gorm:"many2many:post_media" json:"media"`
+}
+
+func (p *Post) Validate() error {
+	var errorMsg error
+
+	if len(p.Title) == 0 {
+		errorMsg = errors.New("post title cannot be empty")
+	} else if len(p.Title) > 255 {
+		errorMsg = errors.New("post title cannot be more than 255 characters")
+	} else if len(p.Content) == 0 {
+		errorMsg = errors.New("post conent cannot be empty")
+	}
+
+	return errorMsg
 }

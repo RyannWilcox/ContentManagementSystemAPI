@@ -137,10 +137,10 @@ func UpdatePost(c *gin.Context) {
 	}
 
 	// Update only the fields that are allowed to be updated
-	if result := inputData.Validate(); result.Error != nil {
+	if err := inputData.Validate(); err != nil {
 		c.JSON(http.StatusBadRequest, utils.HTTPError{
 			Code:    http.StatusBadRequest,
-			Message: result.Error(),
+			Message: err.Error(),
 		})
 		return
 	}

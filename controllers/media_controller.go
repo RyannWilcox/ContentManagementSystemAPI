@@ -147,20 +147,20 @@ func DeleteMedia(c *gin.Context) {
 		return
 	}
 
-	if err := tx.Commit().Error; err != nil {
-		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, utils.HTTPError{
-			Code:    http.StatusInternalServerError,
-			Message: "Failed to commit transaction: " + err.Error(),
-		})
-		return
-	}
-
 	if err := tx.Delete(&media).Error; err != nil {
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, utils.HTTPError{
 			Code:    http.StatusInternalServerError,
 			Message: "Failed to delete media: " + err.Error(),
+		})
+		return
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, utils.HTTPError{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to commit transaction: " + err.Error(),
 		})
 		return
 	}

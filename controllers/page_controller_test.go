@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"bytes"
 	"cms-backend/models"
 	"cms-backend/utils"
 	"encoding/json"
@@ -74,56 +75,103 @@ func TestGetPage(t *testing.T) {
 	assert.Equal(t, uint(1), response.ID, "Expected page ID to be 1")
 	assert.Equal(t, "First Page", response.Title, "Page title should match")
 	assert.Equal(t, "Content 1", response.Content, "Page content should match")
+	assert.NoError(t, mock.ExpectationsWereMet(), "All expectations were not met")
 }
 
 func TestCreatePage(t *testing.T) {
-	//TODO: Add test for CreatePage
-	// STEP 1: Test Setup
-	// - Initialize test environment
-	//router, _, mock := utils.SetupRouterAndMockDB(t)
-	//defer mock.ExpectClose()
+	router, _, mock := utils.SetupRouterAndMockDB(t)
+	defer mock.ExpectClose()
 
-	// STEP 2: Database Expectations
-	// - Expect transaction begin
-	// - Expect INSERT with proper columns
-	// - Expect transaction commit
+	router.POST("/pages", CreatePage)
 
-	// STEP 3: Request Preparation
-	// - Create page object with test data
-	// - Convert to JSON for request body
+	page := models.Page{
+		Title:   "Test Page",
+		Content: "Content 1",
+	}
 
-	// STEP 4: HTTP Test Setup
-	// - Register POST route
-	// - Create request with JSON body
-	// - Set proper headers
+	mock.ExpectBegin()
+	rows := sqlmock.NewRows([]string{"id", "title", "content", "created_at", "updated_at"}).
+		AddRow(1, "Test Page", "Content 1", time.Now(), time.Now())
 
-	// STEP 5: Response Validation
-	// - Verify 201 Created status
-	// - Check created page details
+	mock.ExpectQuery(`INSERT INTO "pages"`).
+		WithArgs(
+			page.Title,
+			page.Content,
+			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
+		).WillReturnRows(rows)
+
+	mock.ExpectCommit()
+
+	w := httptest.NewRecorder()
+
+	body, _ := json.Marshal(page)
+
+	req := httptest.NewRequest("POST", "/pages", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code, "Expected status code 201")
+
+	var returnedPage models.Page
+
+	err := json.Unmarshal(w.Body.Bytes(), &returnedPage)
+
+	assert.NoError(t, err, "Failed to unmarshal response")
+	assert.Equal(t, uint(1), returnedPage.ID, "Expected page ID to be 1")
+	assert.Equal(t, page.Title, returnedPage.Title, "Page title should match")
+	assert.Equal(t, page.Content, returnedPage.Content, "Page content should match")
+	assert.NoError(t, mock.ExpectationsWereMet(), "All expectations were not met")
 }
 
 func TestUpdatePage(t *testing.T) {
-	//TODO: Add test for UpdatePage
-	// STEP 1: Test Setup
-	// - Initialize test environment
+	router, _, mock := utils.SetupRouterAndMockDB(t)
 
-	// STEP 2: Database Expectations
-	// - Expect SELECT to find existing page
-	// - Expect transaction begin
-	// - Expect UPDATE with new values
-	// - Expect transaction commit
+	router.PUT("/pages/:id", UpdatePage)
 
-	// STEP 3: Request Preparation
-	// - Create update data
-	// - Prepare JSON request body
+	selectRows := sqlmock.NewRows([]string{"id", "title", "content", "created_at", "updated_at"}).
+		AddRow(1, "Old Title", "Old Content", time.Now(), time.Now())
 
-	// STEP 4: HTTP Test Setup
-	// - Register PUT route
-	// - Create request with ID and body
+	mock.ExpectQuery(`SELECT \* FROM "pages" WHERE "pages"\."id" = \$1 ORDER BY "pages"\."id" LIMIT \$2`).
+		WithArgs(1, 1).
+		WillReturnRows(selectRows)
 
-	// STEP 5: Response Validation
-	// - Verify successful update
-	// - Check updated fields
+	mock.ExpectBegin()
+
+	mock.ExpectExec(`UPDATE "pages" SET "title"=\$1,"content"=\$2,"updated_at"=\$3 WHERE "id" = \$4`).
+		WithArgs("Updated Title", "Updated Content", sqlmock.AnyArg(), 1).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	reloadRows := sqlmock.NewRows([]string{"id", "title", "content", "created_at", "updated_at"}).
+		AddRow(1, "Updated Title", "Updated Content", time.Now(), time.Now())
+
+	mock.ExpectQuery(`SELECT \* FROM "pages" WHERE "id" = \$1`).
+		WithArgs(1).
+		WillReturnRows(reloadRows)
+
+	mock.ExpectCommit()
+
+	updateData := models.Page{
+		Title:   "Updated Title",
+		Content: "Updated Content",
+	}
+	body, _ := json.Marshal(updateData)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("PUT", "/pages/1", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code, "Expected status code 200")
+
+	var returnedPage models.Page
+	err := json.Unmarshal(w.Body.Bytes(), &returnedPage)
+
+	assert.NoError(t, err, "Failed to unmarshal response")
+	assert.Equal(t, uint(1), returnedPage.ID, "Expected page ID to remain 1")
+	assert.Equal(t, updateData.Title, returnedPage.Title, "Page title should be updated")
+	assert.Equal(t, updateData.Content, returnedPage.Content, "Page content should be updated")
+	assert.NoError(t, mock.ExpectationsWereMet(), "All expectations were not met")
 }
 
 func TestDeletePage(t *testing.T) {

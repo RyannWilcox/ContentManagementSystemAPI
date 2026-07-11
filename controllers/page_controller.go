@@ -148,7 +148,7 @@ func UpdatePage(c *gin.Context) {
 		return
 	}
 
-	if err := db.Model(&page).Updates(inputData).Error; err != nil {
+	if err := tx.Model(&page).Updates(inputData).Scan(&page).Error; err != nil {
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, utils.HTTPError{
 			Code:    http.StatusInternalServerError,

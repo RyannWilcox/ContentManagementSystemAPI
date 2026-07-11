@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 // This struct includes fields for:
 // - ID (unsigned integer, primary key)
@@ -15,4 +18,21 @@ type Page struct {
 	Content   string    `gorm:"type:text;not null" json:"content" binding:"required"`
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+}
+
+func (p *Page) Validate() error {
+	var errorMsg error
+	titleLen := len(p.Title)
+	contentLen := len(p.Content)
+
+	if titleLen == 0 {
+		errorMsg = errors.New("page title cannot be empty")
+
+	} else if titleLen > 255 {
+		errorMsg = errors.New("page title cannot be more than 255 characters")
+
+	} else if contentLen == 0 {
+		errorMsg = errors.New("page content cannot be empty")
+	}
+	return errorMsg
 }

@@ -89,7 +89,7 @@ func CreatePage(c *gin.Context) {
 	if err := tx.Create(&page).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, utils.HTTPError{
 			Code:    http.StatusInternalServerError,
-			Message: "Unable to add a page to the database : " + error.Error(),
+			Message: "Unable to add a page to the database : " + err.Error(),
 		})
 		return
 	}

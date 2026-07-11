@@ -52,7 +52,7 @@ func GetPage(c *gin.Context) {
 	}
 
 	var page models.Page
-	if result := db.First(&page, numId).Error; result.Error != nil {
+	if err := db.First(&page, numId).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, utils.HTTPError{
 			Code:    http.StatusInternalServerError,
 			Message: "Page could not be found.",
@@ -89,7 +89,7 @@ func CreatePage(c *gin.Context) {
 	if err := tx.Create(&page).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, utils.HTTPError{
 			Code:    http.StatusInternalServerError,
-			Message: "Unable to add a page to the database : " + error.Error(),
+			Message: "Unable to add a page to the database : " + err.Error(),
 		})
 		return
 	}
@@ -130,10 +130,10 @@ func UpdatePage(c *gin.Context) {
 		return
 	}
 
-	if result := inputData.Validate(); result.Error != nil {
+	if err := inputData.Validate(); err != nil {
 		c.JSON(http.StatusBadRequest, utils.HTTPError{
 			Code:    http.StatusBadRequest,
-			Message: result.Error(),
+			Message: err.Error(),
 		})
 		return
 	}

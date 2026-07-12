@@ -126,6 +126,7 @@ func TestCreatePage(t *testing.T) {
 
 func TestUpdatePage(t *testing.T) {
 	router, _, mock := utils.SetupRouterAndMockDB(t)
+	defer mock.ExpectClose()
 
 	router.PUT("/pages/:id", UpdatePage)
 
@@ -175,23 +176,36 @@ func TestUpdatePage(t *testing.T) {
 }
 
 func TestDeletePage(t *testing.T) {
-	//TODO: Add test for DeletePage
-	// STEP 1: Test Setup
-	// - Initialize test environment
+	router, _, mock := utils.SetupRouterAndMockDB(t)
+	defer mock.ExpectClose()
 
-	// STEP 2: Database Expectations
-	// - Expect SELECT to verify existence
-	// - Expect transaction begin
-	// - Expect DELETE query
-	// - Expect transaction commit
+	router.DELETE("/pages/:id", DeletePage)
 
-	// STEP 3: HTTP Test Setup
-	// - Register DELETE route
-	// - Create request with ID
+	selectRows := sqlmock.NewRows([]string{"id", "title", "content", "created_at", "updated_at"}).
+		AddRow(1, "Test Title", "Content 1", time.Now(), time.Now())
 
-	// STEP 4: Response Validation
-	// - Verify successful deletion
-	// - Check deletion message
+	mock.ExpectQuery(`SELECT \* FROM "pages" WHERE "pages"\."id" = \$1 ORDER BY "pages"\."id" LIMIT \$2`).
+		WithArgs(1, 1).WillReturnRows(selectRows)
+
+	mock.ExpectBegin()
+
+	mock.ExpectExec(`DELETE FROM "pages" WHERE "pages"\."id" = \$1`).
+		WithArgs(1).WillReturnResult(sqlmock.NewResult(0, 1))
+
+	mock.ExpectCommit()
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("DELETE", "/pages/1", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code, "Expected status code 200.")
+
+	var response map[string]string
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+
+	assert.NoError(t, err, "Failed to unmarshal response")
+	assert.Equal(t, "Page successfully deleted", response["message"])
+	assert.NoError(t, mock.ExpectationsWereMet(), "All expectations were not met")
 }
 
 /*

@@ -202,7 +202,7 @@ func DeletePage(c *gin.Context) {
 		return
 	}
 
-	if err := db.Delete(&page).Error; err != nil {
+	if err := tx.Delete(&page).Error; err != nil {
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, utils.HTTPError{
 			Code:    http.StatusInternalServerError,

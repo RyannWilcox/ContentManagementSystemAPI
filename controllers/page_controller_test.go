@@ -66,7 +66,7 @@ func TestGetPage(t *testing.T) {
 
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code, "Expected status code 201")
+	assert.Equal(t, http.StatusOK, w.Code, "Expected status code 200")
 
 	var response models.Page
 	err := json.Unmarshal(w.Body.Bytes(), &response)

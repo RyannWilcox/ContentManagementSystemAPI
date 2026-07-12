@@ -165,7 +165,7 @@ func DeleteMedia(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusAccepted, utils.MessageResponse{
+	c.JSON(http.StatusOK, utils.MessageResponse{
 		Message: "Media successfully deleted",
 	})
 

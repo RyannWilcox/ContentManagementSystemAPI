@@ -156,7 +156,7 @@ func UpdatePost(c *gin.Context) {
 	}
 
 	// Save the updated post
-	if err := db.Model(&post).Updates(inputData).Error; err != nil {
+	if err := tx.Model(&post).Updates(inputData).Scan(&post).Error; err != nil {
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, utils.HTTPError{
 			Code:    http.StatusInternalServerError,

@@ -46,7 +46,7 @@ func TestMain(m *testing.M) {
 func setup() {
 	gin.SetMode(gin.TestMode)
 
-	godotenv.Load(".env.test")
+	godotenv.Load(".env.test") // only way i was able to get the test env vars to load correctly
 
 	// Get the test env
 	dsn := fmt.Sprintf(

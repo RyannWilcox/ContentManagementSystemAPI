@@ -23,7 +23,6 @@ import (
 
 func TestGetPages(t *testing.T) {
 	router, _, mock := utils.SetupRouterAndMockDB(t)
-	defer mock.ExpectClose()
 
 	rows := sqlmock.NewRows([]string{"id", "title", "content", "created_at", "updated_at"}).
 		AddRow(1, "First Page", "Content 1", time.Now(), time.Now()).
@@ -51,7 +50,6 @@ func TestGetPages(t *testing.T) {
 
 func TestGetPage(t *testing.T) {
 	router, _, mock := utils.SetupRouterAndMockDB(t)
-	defer mock.ExpectClose()
 
 	rows := sqlmock.NewRows([]string{"id", "title", "content", "created_at", "updated_at"}).
 		AddRow(1, "First Page", "Content 1", time.Now(), time.Now())
@@ -80,7 +78,6 @@ func TestGetPage(t *testing.T) {
 
 func TestCreatePage(t *testing.T) {
 	router, _, mock := utils.SetupRouterAndMockDB(t)
-	defer mock.ExpectClose()
 
 	router.POST("/pages", CreatePage)
 
@@ -126,7 +123,6 @@ func TestCreatePage(t *testing.T) {
 
 func TestUpdatePage(t *testing.T) {
 	router, _, mock := utils.SetupRouterAndMockDB(t)
-	defer mock.ExpectClose()
 
 	router.PUT("/pages/:id", UpdatePage)
 

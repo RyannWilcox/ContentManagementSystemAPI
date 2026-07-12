@@ -52,8 +52,8 @@ func GetMediaByID(c *gin.Context) {
 
 	var media models.Media
 	if err := db.First(&media, numId).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, utils.HTTPError{
-			Code:    http.StatusInternalServerError,
+		c.JSON(http.StatusNotFound, utils.HTTPError{
+			Code:    http.StatusNotFound,
 			Message: "Failed to retrieve media: " + err.Error(),
 		})
 		return

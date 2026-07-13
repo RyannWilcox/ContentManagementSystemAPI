@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // TODO: Import required packages for:
@@ -27,17 +30,16 @@ Each test should:
 */
 
 func TestMediaIntegration(t *testing.T) {
-	//TODO: Implement TestMediaIntegration
-    // STEP 1: Clear Database
-    // - Clear all tables before starting tests
+	// STEP 1: Clear Database
+	// - Clear all tables before starting tests
 	clearTables()
 
 	t.Run("Create Media", func(t *testing.T) {
 		//TODO: Implement test logic
-        // STEP 1: Prepare Test Data
-        // - Create JSON body with:
-        //   * URL (e.g., "http://example.com/test.jpg")
-        //   * Type (e.g., "image")
+		// STEP 1: Prepare Test Data
+		// - Create JSON body with:
+		//   * URL (e.g., "http://example.com/test.jpg")
+		//   * Type (e.g., "image")
 		body := `{
 			"url": "http://example.com/test.jpg",
 			"type": "image"
@@ -46,7 +48,7 @@ func TestMediaIntegration(t *testing.T) {
 		// STEP 2: Create HTTP Request
 		// - Create POST request to /api/v1/media
 		// - Set Content-Type header
-		// - Add request body	
+		// - Add request body
 		req := httptest.NewRequest("POST", "/api/v1/media", strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 
@@ -75,31 +77,120 @@ func TestMediaIntegration(t *testing.T) {
 		}
 	})
 
-    t.Run("Get All Media", func(t *testing.T) {
-		//TODO: Implement test logic
-        // STEP 1: Setup Test Data
-        // - Create test media entries if needed
-        
-        // STEP 2: Create HTTP Request
-        // - Create GET request to /api/v1/media
-        
-        // STEP 3: Execute Request
-        // - Create response recorder
-        // - Send request through router
-        
-        // STEP 4: Verify Response
-        // - Check status code (should be 200 OK)
-        // - Parse response JSON array
-        // - Verify media list properties
-        // - Check number of items
-    })
+	t.Run("Get All Media", func(t *testing.T) {
+		// STEP 1: Setup Test Data
+		// - Create test media entries if needed
+		clearTables()
+		createTestMedia(t)
+		createTestMedia(t)
 
-    // TODO: Additional test cases to consider:
-    // - Get single media by ID
-    // - Create media with invalid data
-    // - Delete media
-    // - Create media with duplicate URL
+		// STEP 2: Create HTTP Request
+		req := httptest.NewRequest("GET", "/api/v1/media", nil)
+
+		// STEP 3: Execute Request
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		// STEP 4: Verify Response
+		// - Check status code (should be 200 OK)
+		// - Parse response JSON array
+		// - Verify media list properties
+		// - Check number of items
+		assert.Equal(t, http.StatusOK, w.Code, "Expected status 200 OK")
+
+		var response []models.Media
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err, "Failed to unmarshal response")
+		assert.Equal(t, 2, len(response), "Expected 2 media items")
+	})
+
+	t.Run("Get Media by ID", func(t *testing.T) {
+		clearTables()
+		id := createTestMedia(t)
+
+		// STEP 1: Create HTTP Request
+		req := httptest.NewRequest("GET", "/api/v1/media/"+strconv.FormatUint(uint64(id), 10), nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code, "Expected status 200 OK")
+
+		//	STEP 2: Verify Response
+		var response models.Media
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err, "Failed to unmarshal response")
+
+		assert.Equal(t, "http://example.com/test.jpg", response.URL, "Expected URL 'http://example.com/test.jpg'")
+		assert.Equal(t, "image", response.Type, "Expected type 'image'")
+		assert.Equal(t, id, response.ID, "Expected ID to match")
+	})
+
+	t.Run("Create Media with Invalid Data", func(t *testing.T) {
+		clearTables()
+
+		// Invalid url
+		invalidBody := `{
+			"url": "",
+			"type": "a type"
+		}`
+		// STEP 1: Create HTTP Request with Invalid Data
+		req := httptest.NewRequest("POST", "/api/v1/media", strings.NewReader(invalidBody))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code, "Expected status 400 Bad Request")
+	})
+
+	t.Run("Delete Media", func(t *testing.T) {
+		clearTables()
+		id := createTestMedia(t)
+
+		// STEP 1: Create HTTP Request for Deletion
+		req := httptest.NewRequest("DELETE", "/api/v1/media/"+strconv.FormatUint(uint64(id), 10), nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code, "Expected status 200 OK")
+
+		// STEP 2: Verify Response
+		var response map[string]string
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		assert.NoError(t, err, "Failed to unmarshal response")
+		assert.Equal(t, "Media successfully deleted", response["message"], "Expected deletion message")
+
+		// Verify that the media is deleted
+		req = httptest.NewRequest("GET", "/api/v1/media/"+strconv.FormatUint(uint64(id), 10), nil)
+		w = httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusNotFound, w.Code, "Expected status 404 Not Found after deletion")
+	})
+
+	t.Run("Create Media with Duplicate URL", func(t *testing.T) {
+		clearTables()
+		createTestMedia(t)
+
+		duplicateBody := `{
+			"url": "http://example.com/test.jpg",
+			"type": "image"
+		}`
+
+		req := httptest.NewRequest("POST", "/api/v1/media", strings.NewReader(duplicateBody))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusCreated, w.Code, "Expected status 201")
+	})
+
 }
+
+// TODO: Additional test cases to consider:
+// - Get single media by ID
+// - Create media with invalid data
+// - Delete media
+// - Create media with duplicate URL
 
 /*
 TESTING HINTS:

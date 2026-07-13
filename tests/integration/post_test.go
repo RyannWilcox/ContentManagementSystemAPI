@@ -67,26 +67,73 @@ func TestPostIntegration(t *testing.T) {
 	})
 
 	t.Run("Get Posts with Filter", func(t *testing.T) {
-		url := fmt.Sprintf("/api/v1/posts?media_id=%d", mediaId)
+		// Create a second post with a different author, so we can prove the
+		// filter actually excludes non-matching posts rather than just
+		// happening to include the one we're looking for.
+
+		body := `{
+			"title": "Post",
+			"content": "This post should appear in the filtered results",
+			"author": "Jane Doe"
+		}`
+		otherBody := `{
+			"title": "Unrelated Post",
+			"content": "This post should not appear in the filtered results",
+			"author": "Someone Else"
+		}`
+
+		otherReq := httptest.NewRequest("POST", "/api/v1/posts", strings.NewReader(otherBody))
+		otherReq.Header.Set("Content-Type", "application/json")
+		otherW := httptest.NewRecorder()
+		router.ServeHTTP(otherW, otherReq)
+
+		firstReq := httptest.NewRequest("POST", "/api/v1/posts", strings.NewReader(body))
+		firstReq.Header.Set("Content-Type", "application/json")
+		firstW := httptest.NewRecorder()
+		router.ServeHTTP(firstW, firstReq)
+
+		if otherW.Code != http.StatusCreated {
+			t.Fatalf("Failed to create unrelated post, status: %d, body: %s", otherW.Code, otherW.Body.String())
+		}
+
+		if firstW.Code != http.StatusCreated {
+			t.Fatalf("Failed to create unrelated post, status: %d, body: %s", firstW.Code, firstW.Body.String())
+		}
+
+		var otherPost models.Post
+		if err := json.Unmarshal(otherW.Body.Bytes(), &otherPost); err != nil {
+			t.Fatalf("Failed to unmarshal unrelated post: %v", err)
+		}
+
+		// Filtering posts by author
+		url := fmt.Sprintf("/api/v1/posts?author=%s", "Jane+Doe")
 		req := httptest.NewRequest("GET", url, nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusOK, w.Code, "Expected status 200")
+		if w.Code != http.StatusOK {
+			t.Fatalf("Expected status 200, got %d: %s", w.Code, w.Body.String())
+		}
 
 		var response []models.Post
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err, "Failed to unmarshal response")
+		if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+			t.Fatalf("Failed to unmarshal response: %v", err)
+		}
 
 		found := false
+		unrelatedFound := false
 		for _, p := range response {
-			if p.ID == postId {
+			if p.ID == 3 {
 				found = true
-				break
+			}
+			if p.ID == otherPost.ID {
+				unrelatedFound = true
 			}
 		}
 
-		assert.True(t, found, "Expected to find post %d in filtered results (got %d posts)", postId, len(response))
+		assert.Equal(t, 1, len(response), "Expected exactly one post in filtered results")
+		assert.True(t, found, "Expected to find post %d (author 'Jane Doe') in filtered results", postId)
+		assert.False(t, unrelatedFound, "Expected unrelated post %d (author 'Someone Else') to be excluded from filtered results", otherPost.ID)
 	})
 }
 

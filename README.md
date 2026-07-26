@@ -39,7 +39,7 @@ A backend API for a Content Management System (CMS), built in Go with [Gin](http
 **1. Clone the repository**
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/RyannWilcox/ContentManagementSystemAPI.git
 cd cms-backend
 ```
 
